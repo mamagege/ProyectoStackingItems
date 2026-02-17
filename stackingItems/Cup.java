@@ -1,151 +1,132 @@
 import java.util.ArrayList;
 
-/**
- * Representa una taza construida por bloques.
- * Cada taza tiene tamaño NxN.
- * 
- * @author  Oscar Lasso and Juan Diego Gaitán
- */
 public class Cup {
 
-    private int id;               // Identificador único
-    private int size;                 // Tamaño NxN
+    private int id;                
+    private int size;                 
     private String color;
 
     private ArrayList<Rectangle> parts;
     private boolean isVisible;
 
-    private static final int BLOCK_SIZE = 50;
-    
-    private Lid lid;
 
-    /**
-     * Constructor
-     */
+    private static final int BLOCK_SIZE = 25;
+    
+    private int xPosition; 
+    private int yPosition; 
+
     public Cup(int id, int size, String color) {
         this.id = id;
         this.size = size;
         this.color = color;
         this.parts = new ArrayList<>();
         this.isVisible = false;
+        
 
-        buildCup(); // Solo construye, NO dibuja
+        this.xPosition = 0;
+        this.yPosition = 0;
+
+        buildCup(); 
     }
     
     /**
-     * Construye la forma de la taza
+     * Construye la taza en la posición actual (xPosition, yPosition)
      */
     private void buildCup() {
-
-        // Columna izquierda
-        for (int i = 1; i < size; i++) {
+ 
+        if (parts.size() > 0) {
+            makeInvisible();
+            parts.clear();
+        }
+        
+        int heightInBlocks = getHeight(); // (2*size - 1)
+        int widthInBlocks = size;         // El ancho es 'size' bloques
+        
+        // 1. Crear la BASE (Fondo)
+        // La base va en la parte inferior.
+        // Coordenada Y de la base = yPosition + (altura - 1)*25
+        int baseIndexY = heightInBlocks - 1;
+        
+        for (int c = 0; c < widthInBlocks; c++) {
             Rectangle r = new Rectangle();
-            r.moveHorizontal(0);
-            r.moveVertical(i * BLOCK_SIZE);
             r.changeColor(color);
+            // Mover a la posición absoluta
+            r.moveHorizontal(xPosition + (c * BLOCK_SIZE));
+            r.moveVertical(yPosition + (baseIndexY * BLOCK_SIZE));
             parts.add(r);
         }
 
-        // Base
-        for (int i = 0; i < size; i++) {
-            Rectangle r = new Rectangle();
-            r.moveHorizontal(i * BLOCK_SIZE);
-            r.moveVertical((size) * BLOCK_SIZE);
-            r.changeColor(color);
-            parts.add(r);
+        // 2. Crear las PAREDES (Izquierda y Derecha)
+        // Van desde arriba (0) hasta justo antes de la base
+        for (int r = 0; r < heightInBlocks - 1; r++) {
+            // Pared Izquierda (Columna 0)
+            Rectangle left = new Rectangle();
+            left.changeColor(color);
+            left.moveHorizontal(xPosition); // Borde izquierdo
+            left.moveVertical(yPosition + (r * BLOCK_SIZE));
+            parts.add(left);
+
+            // Pared Derecha (Última columna)
+            // Solo si el tamaño > 1 (si es 1, es solo base)
+            if (size > 1) {
+                Rectangle right = new Rectangle();
+                right.changeColor(color);
+                right.moveHorizontal(xPosition + ((widthInBlocks - 1) * BLOCK_SIZE));
+                right.moveVertical(yPosition + (r * BLOCK_SIZE));
+                parts.add(right);
+            }
         }
-
-        // Columna derecha
-        for (int i = 1; i < size; i++) {
-            Rectangle r = new Rectangle();
-            r.moveHorizontal((size-1) * BLOCK_SIZE);
-            r.moveVertical(i * BLOCK_SIZE);
-            r.changeColor(color);
-            parts.add(r);
-        }
-    }
-
-    public void placeLid(Lid lid) {
-        this.lid = lid;
-    }
-
-    public void removeLid() {
-        this.lid = null;
-    }
-
-    public boolean hasLid() {
-        return lid != null;
-    }
-
-    public Lid getLid() {
-        return lid;
     }
     
     /**
-     * Hace visible la taza
+     * Mueve la taza a una posición absoluta (X, Y).
+     * Reconstruye la taza en la nueva posición para evitar errores de delta.
      */
-    public void makeVisible() {
-        for (Rectangle r : parts) {
-            r.makeVisible();
-        }
-        isVisible = true;
+    public void moveTo(int targetX, int targetY) {
+        // Opción segura: Actualizar coordenadas y reconstruir
+        // Esto garantiza que visualmente esté donde los números dicen que está.
+        boolean wasVisible = isVisible;
+        if (wasVisible) makeInvisible();
+        
+        this.xPosition = targetX;
+        this.yPosition = targetY;
+        
+        buildCup();
+        
+        if (wasVisible) makeVisible();
     }
 
-    /**
-     * Hace invisible la taza
-     */
-    public void makeInvisible() {
-        for (Rectangle r : parts) {
-            r.makeInvisible();
-        }
-        isVisible = false;
+    public int getPixelWidth() {
+        return size * BLOCK_SIZE;
     }
 
-    /**
-     * Mueve verticalmente toda la taza
-     */
-    public void moveVertical(int distance) {
-        distance = distance * BLOCK_SIZE;
-        for (Rectangle r : parts) {
-            r.moveVertical(distance);
-        }
-        if (lid != null) {
-            lid.moveVertical(distance);
-        }
+    public int getRealPixelHeight() {
+        return getHeight() * BLOCK_SIZE;
     }
 
-    /**
-     * Mueve horizontalmente toda la taza
-     */
-    public void moveHorizontal(int distance) {
-        distance = distance * BLOCK_SIZE;
-        for (Rectangle r : parts) {
-            r.moveHorizontal(distance);
-        }
-        if (lid != null) {
-            lid.moveHorizontal(distance);
-        }
-}
-    
-
-    /**
-     * Retorna la altura real de la taza
-     */
+    // Altura en bloques lógicos
     public int getHeight() {
         return (2 * size - 1);
     }
-
-    /**
-     * Retorna número identificador
-     */
-    public int getId() {
-        return id;
-    }
     
-    /**
-     * Retorna color identificador
-     */
-    public String getColor() {
-        return color;
+    public int getId() { return id; }
+    public int getSize() { return size; }
+    
+    // Retorna la coordenada Y superior real
+    public int getY() { return yPosition; }
+    public int getX() { return xPosition; }
+
+    public void makeVisible() {
+        isVisible = true;
+        for (Rectangle r : parts) {
+            r.makeVisible();
+        }
+    }
+
+    public void makeInvisible() {
+        isVisible = false;
+        for (Rectangle r : parts) {
+            r.makeInvisible();
+        }
     }
 }

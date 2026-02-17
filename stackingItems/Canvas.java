@@ -26,7 +26,7 @@ public class Canvas{
      */
     public static Canvas getCanvas(){
         if(canvasSingleton == null) {
-            canvasSingleton = new Canvas("StackingCups", 800, 800, 
+            canvasSingleton = new Canvas("StackingCups", 1000, 1000, 
                                          Color.white);
         }
         canvasSingleton.setVisible(true);

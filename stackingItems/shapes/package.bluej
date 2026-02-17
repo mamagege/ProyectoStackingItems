@@ -1,15 +1,18 @@
 #BlueJ package file
-objectbench.height=263
-objectbench.width=826
+dependency1.from=Triangle
+dependency1.to=Canvas
+dependency1.type=UsesDependency
+objectbench.height=264
+objectbench.width=1510
 package.divider.horizontal=0.5502638522427441
-package.divider.vertical=0.628696604600219
+package.divider.vertical=0.6287671232876713
 package.editor.height=452
-package.editor.width=1397
+package.editor.width=1394
 package.editor.x=0
 package.editor.y=0
 package.frame.height=830
 package.frame.width=1550
-package.numDependencies=0
+package.numDependencies=1
 package.numTargets=4
 package.showExtends=true
 package.showUses=true

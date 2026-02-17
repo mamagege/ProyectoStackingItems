@@ -1,157 +1,186 @@
 import java.util.ArrayList;
-import javax.swing.JOptionPane;
+import java.util.Collections; 
+import java.util.Comparator;
+import java.util.HashMap;
 
-/**
- * Representa la torre de tazas y tapas.
- */
 public class Tower {
-
-    private int width;
-    private int maxHeight;
-
+    
+    private static final int TOWER_X = 500; // Centro de pantalla
+    private static final int BASE_Y = 900;  // Suelo
+    private static final int BLOCK_SIZE = 25;
+    
     private ArrayList<Cup> cups;
-    private ArrayList<Lid> lids;
-
+    private HashMap<Integer, Boolean> tappedCups;
     private boolean isVisible;
-    private boolean lastActionOK;
+    private boolean isTap = false;
+    
+    
 
-    /**
-     * Constructor
-     */
-    public Tower(int width, int maxHeight) {
-        this.width = width;
-        this.maxHeight = maxHeight;
-        this.cups = new ArrayList<>();
-        this.lids = new ArrayList<>();
-        this.isVisible = false;
-        this.lastActionOK = true;
-    }
-
-    /**
-     * Agrega una taza
-     */
-    public void pushCup(int id, int size, String color) {
-
-        if (existsCup(id)) {
-            error("Ya existe una taza con ese id.");
-        return;
-        }
-
-        Cup cup = new Cup(id, size, color);
-
-        cups.add(cup);
-
-        int newHeight = calculateHeight();
-
-        if (newHeight > maxHeight) {
-            cups.remove(cup);
-            error("No cabe en la torre.");
-            return;
-        }
-
-        repositionCups();
-
-        if (isVisible) {
-            cup.makeVisible();
-        }
-
-        lastActionOK = true;
-    }
-
-
-    /**
-     * Agrega una tapa
-     */
-    public void pushLid(int id, int size, String color) {
-
-        Cup cup = findCup(id);
-
-        if (cup == null) {
-            error("No existe taza para colocar la tapa.");
-            return;
-            }
-
-        if (cup.hasLid()) {
-            error("La taza ya tiene tapa.");
-            return;
-            }
-
-        Lid lid = new Lid(id, size, color);
-        cup.placeLid(lid);
-        lids.add(lid);
-
-        if (isVisible) {
-            lid.makeVisible();
-            }
-
-        lastActionOK = true;
-    }
-
-    /**
-     * Retorna altura total simple (mini-ciclo 1)
-     */
-    public int height() {
-
-        int total = 0;
-
-        for (Cup c : cups) {
-            total += 1;  // temporal (mini-ciclo)
-        }
-
-        return total;
-    }
-
-    /**
-     * Hace visible la torre
-     */
-    public void makeVisible() {
-        for (Cup c : cups) {
-            c.makeVisible();
-        }
-
-        for (Lid l : lids) {
-            l.makeVisible();
-        }
-
-        isVisible = true;
-    }
-
-    /**
-     * Hace invisible la torre
-     */
-    public void makeInvisible() {
-        for (Cup c : cups) {
-            c.makeInvisible();
-        }
-
-        for (Lid l : lids) {
-            l.makeInvisible();
-        }
-
+    public Tower() {
+        cups = new ArrayList<>();
+        tappedCups = new HashMap<>();
         isVisible = false;
     }
 
-    /**
-     * Retorna estado de última operación
-     */
-    public boolean ok() {
-        return lastActionOK;
-    }
-
-    // ==========================
-    // MÉTODOS PRIVADOS AUXILIARES
-    // ==========================
-
-    private boolean existsCup(int id) {
+    
+    public void pushCup(int size) {
+        int id = size;
+        
+        // 1. Validar Duplicados
         for (Cup c : cups) {
             if (c.getId() == id) {
-                return true;
+                System.out.println("--- ERROR: La taza " + id + " ya existe. ---");
+                return;
             }
         }
-        return false;
+
+        // 2. Crear Taza
+        String color = getColorForSize(size);
+        Cup newCup = new Cup(id, size, color);
+        
+        // Siempre nace libre
+        tappedCups.put(newCup.getId(), false);
+        
+        // Centrado X
+        int widthPx = newCup.getPixelWidth();
+        int targetX = TOWER_X - (widthPx / 2);
+        int targetY = 0; // Inicializar
+
+        if (cups.isEmpty()) {
+            // CASO BASE: Suelo
+            targetY = BASE_Y - newCup.getRealPixelHeight();
+            System.out.println("Base: Taza " + id + " en el suelo.");
+        } 
+        else {
+            // --- ALGORITMO DE BÚSQUEDA DE SOPORTE ---
+            
+            Cup effectiveSupport = null; // La taza sobre la que nos apoyaremos físicamente
+            boolean isNesting = false;   // ¿Nos apoyamos en el fondo (true) o en el borde (false)?
+            
+            // Recorremos desde la última taza hacia abajo
+            for (int i = cups.size() - 1; i >= 0; i--) {
+                Cup candidate = cups.get(i);
+                
+                // Si la candidata ya está tapada por otra cosa, la ignoramos y bajamos más
+                if (tappedCups.get(candidate.getId())) {
+                    continue;
+                }
+                
+                // COMPARACIÓN DE TAMAÑO
+                if (newCup.getSize() < candidate.getSize()) {
+                    // ¡ENCONTRAMOS CONTENEDOR! (La nueva cabe en la candidata)
+                    
+                    if (effectiveSupport != null) {
+                        // Caso "Sándwich" (7 -> 2 -> 5):
+                        // Ya habíamos encontrado una taza menor (2) sobre la que apoyarnos.
+                        // Ahora encontramos la contenedora (7).
+                        // Nos quedamos apoyados sobre la menor (2), pero paramos de buscar.
+                        System.out.println("   -> SÁNDWICH: " + id + " entra en " + candidate.getId() + " pero se apoya en " + effectiveSupport.getId());
+                    } else {
+                        // Caso "Anidar Simple" (7 -> 2):
+                        // No nos habíamos apoyado en nada antes. Nos apoyamos en el fondo de esta.
+                        effectiveSupport = candidate;
+                        isNesting = true;
+                        System.out.println("   -> ANIDAR: " + id + " al fondo de " + candidate.getId());
+                    }
+                    
+                    // En cualquier caso, si cabemos aquí, dejamos de buscar hacia abajo.
+                    break;
+                    
+                } else {
+                    // ¡SOMOS MÁS GRANDES! (Apilar / Puente)
+                    // La nueva es mayor que la candidata.
+                    // Nos apoyamos sobre esta candidata (effectiveSupport).
+                    // Y marcamos esta candidata como TAPADA.
+                    
+                    effectiveSupport = candidate;
+                    isNesting = false; // Apilamos sobre su borde
+                    
+                    tappedCups.put(candidate.getId(), true); // La tapamos
+                    
+                    System.out.println("   ... " + id + " es mayor que " + candidate.getId() + ", bajando más...");
+                    
+                    // IMPORTANTE: NO hacemos break.
+                    // Seguimos buscando abajo. Ejemplo (8 -> 6 -> 12):
+                    // 12 tapa al 6. Sigue bajando.
+                    // 12 tapa al 8. Sigue bajando.
+                }
+            }
+            
+            // --- CÁLCULO FINAL DE Y ---
+            if (effectiveSupport != null) {
+                if (isNesting) {
+                    // Apoyarse en el fondo interno
+                    int floorY = effectiveSupport.getY() + effectiveSupport.getRealPixelHeight();
+                    int insideFloorY = floorY - BLOCK_SIZE;
+                    targetY = insideFloorY - newCup.getRealPixelHeight();
+                } else {
+                    // Apoyarse en el borde superior (Apilar)
+                    targetY = effectiveSupport.getY() - newCup.getRealPixelHeight();
+                }
+            } else {
+                // Caso extremo: La taza es más grande que TODAS las anteriores.
+                // Se apoya en el suelo (cubriendo a toda la torre)
+                 targetY = BASE_Y - newCup.getRealPixelHeight();
+                 System.out.println("   -> GIGANTE: " + id + " cubre toda la torre hasta el suelo.");
+            }
+        }
+
+        // 3. Mover y Guardar
+        newCup.moveTo(targetX, targetY);
+        if (isVisible) newCup.makeVisible();
+        cups.add(newCup);
+    }
+    
+
+
+    public void popCup() {
+
+    if (!cups.isEmpty()) {
+        Cup removedCup = cups.remove(cups.size() - 1);
+        removedCup.makeInvisible();
+        
+        // 1. Quitar la taza que se fue del mapa
+        tappedCups.remove(removedCup.getId());
+        
+        // 2. ¡IMPORTANTE! Liberar a la taza que estaba debajo
+        // Como tu lógica de "quién tapa a quién" es dinámica (bucle for),
+        // es difícil saber exactamente cuál liberar sin recalcular.
+        
+        // OPCIÓN SENCILLA (Fuerza bruta):
+        // Resetear todo el mapa a false y recalcular estado (menos eficiente pero seguro)
+        // O simplemente asumir que la inmediatamente anterior queda libre si estaba tapada.
+        
+        if (!cups.isEmpty()) {
+             Cup topCup = cups.get(cups.size() - 1);
+             // Liberamos la nueva cima por si acaso estaba tapada
+             tappedCups.put(topCup.getId(), false); 
+        }
+    }
     }
 
-    private Cup findCup(int id) {
+
+    public void makeVisible() {
+        isVisible = true;
+        for (Cup c : cups) {
+            c.makeVisible();
+        }
+    }
+    
+    
+    public void makeInvisible() {
+        isVisible = false;
+        for (Cup c : cups) {
+            c.makeInvisible();
+        }
+    }
+
+    private String getColorForSize(int s) {
+        String[] colors = {"red", "blue", "green", "yellow", "magenta", "black"};
+        return colors[s % colors.length];
+    }
+    // Método auxiliar para buscar tazas por ID en el ArrayList
+    private Cup getCupById(int id) {
         for (Cup c : cups) {
             if (c.getId() == id) {
                 return c;
@@ -159,36 +188,5 @@ public class Tower {
         }
         return null;
     }
-
-    private void error(String message) {
-        if (isVisible) {
-            JOptionPane.showMessageDialog(null, message);
-        }
-        lastActionOK = false;
-    }
     
-    private int calculateHeight() {
-
-        if (cups.isEmpty()) return 0;
-
-        int max = 0;
-
-        for (int i = 0; i < cups.size(); i++) {
-            int candidate = cups.get(i).getHeight() + i;
-            max = Math.max(max, candidate);
-        }
-
-        return max;
-    }
-    
-    private void repositionCups() {
-
-        for (int i = 0; i < cups.size(); i++) {
-
-            Cup cup = cups.get(i);
-
-            // Cada taza baja i bloques
-            cup.moveVertical(i);
-        }
-    }
 }

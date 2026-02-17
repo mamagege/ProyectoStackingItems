@@ -17,6 +17,9 @@ public class Lid {
     private boolean isVisible;
 
     private static final int BLOCK_SIZE = 50;
+    
+    private int xPosition = 0; // Posición actual X
+    private int yPosition = 0; // Posición actual Y
 
     public Lid(int id, int size, String color) {
         this.id = id;
@@ -63,6 +66,29 @@ public class Lid {
             r.moveHorizontal(distance * BLOCK_SIZE);
         }
     }
+    
+    public void moveTo(int targetX, int targetY) {
+        // 1. Calcular cuánto nos falta para llegar al destino (Delta)
+        
+        int xCentrado = targetX - (this.size * BLOCK_SIZE) / 2;
+        
+        int deltaX = xCentrado - this.xPosition;
+        int deltaY = targetY - this.yPosition;
+
+        // 2. Mover los rectángulos esa diferencia
+        // NOTA: No multiplicamos por BLOCK_SIZE aquí porque Tower2 ya manda píxeles
+        for (Rectangle r : parts) {
+            r.moveHorizontal(deltaX);
+            r.moveVertical(deltaY);
+        }
+    
+    
+
+        // 3. Actualizar nuestra posición actual conocida
+        this.xPosition = xCentrado;
+        this.yPosition = yPosition + deltaY;
+    }
+    
 
     public int getHeight() {
         return 1;
@@ -71,4 +97,10 @@ public class Lid {
     public int getId() {
         return id;
     }
+    
+    public int getSize() {
+        return size;
+    }
+    
+    
 }
