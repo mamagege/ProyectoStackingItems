@@ -2,7 +2,7 @@ import java.util.ArrayList;
 
 /**
  * Representa una tapa asociable a una taza.
- * @author Juan Gaitán and Oscar Lasso
+ * @author Juan Gaitán and Oscar LasLidso
  */
 public class Lid {
 
