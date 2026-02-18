@@ -1,12 +1,9 @@
 import java.util.ArrayList;
 
 /**
- * Representa una tapa construida por bloques.
- * Cada tapa tiene tamaño (N-2) x 1.
- * 
- * @author  Oscar Lasso and Juan Diego Gaitán
+ * Representa una tapa asociable a una taza.
+ * @author Juan Gaitán and Oscar Lasso
  */
-
 public class Lid {
 
     private int id;
@@ -16,91 +13,74 @@ public class Lid {
     private ArrayList<Rectangle> parts;
     private boolean isVisible;
 
-    private static final int BLOCK_SIZE = 50;
-    
-    private int xPosition = 0; // Posición actual X
-    private int yPosition = 0; // Posición actual Y
+    private static final int BLOCK_SIZE = 25;
 
+    private int xPosition;
+    private int yPosition;
+
+    /**
+     * Construye una tapa con identificador, tamaño y color.
+     */
     public Lid(int id, int size, String color) {
         this.id = id;
         this.size = size;
         this.color = color;
         this.parts = new ArrayList<>();
         this.isVisible = false;
-
         buildLid();
     }
 
+    /**
+     * Construye la geometría de la tapa.
+     */
     private void buildLid() {
+        parts.clear();
+
         for (int i = 0; i < size; i++) {
             Rectangle r = new Rectangle();
-            r.moveHorizontal(i * BLOCK_SIZE);
-            r.moveVertical(0);
             r.changeColor(color);
             parts.add(r);
         }
     }
 
-    public void makeVisible() {
-        for (Rectangle r : parts) {
-            r.makeVisible();
-        }
-        isVisible = true;
-    }
-
-    public void makeInvisible() {
-        for (Rectangle r : parts) {
-            r.makeInvisible();
-        }
-        isVisible = false;
-    }
-
-    public void moveVertical(int distance) {
-        for (Rectangle r : parts) {
-            r.moveVertical(distance * BLOCK_SIZE);
-        }
-    }
-
-    public void moveHorizontal(int distance) {
-        for (Rectangle r : parts) {
-            r.moveHorizontal(distance * BLOCK_SIZE);
-        }
-    }
-    
+    /**
+     * Mueve la tapa a una posición absoluta.
+     */
     public void moveTo(int targetX, int targetY) {
-        // 1. Calcular cuánto nos falta para llegar al destino (Delta)
-        
-        int xCentrado = targetX - (this.size * BLOCK_SIZE) / 2;
-        
-        int deltaX = xCentrado - this.xPosition;
-        int deltaY = targetY - this.yPosition;
+        boolean wasVisible = isVisible;
+        if (wasVisible) makeInvisible();
 
-        // 2. Mover los rectángulos esa diferencia
-        // NOTA: No multiplicamos por BLOCK_SIZE aquí porque Tower2 ya manda píxeles
-        for (Rectangle r : parts) {
-            r.moveHorizontal(deltaX);
-            r.moveVertical(deltaY);
+        this.xPosition = targetX;
+        this.yPosition = targetY;
+
+        for (int i = 0; i < parts.size(); i++) {
+            Rectangle r = parts.get(i);
+            r.moveHorizontal(targetX + (i * BLOCK_SIZE));
+            r.moveVertical(targetY);
         }
-    
-    
 
-        // 3. Actualizar nuestra posición actual conocida
-        this.xPosition = xCentrado;
-        this.yPosition = yPosition + deltaY;
-    }
-    
-
-    public int getHeight() {
-        return 1;
+        if (wasVisible) makeVisible();
     }
 
-    public int getId() {
-        return id;
+    /**
+     * Hace visible la tapa.
+     */
+    public void makeVisible() {
+        isVisible = true;
+        for (Rectangle r : parts) r.makeVisible();
     }
-    
-    public int getSize() {
-        return size;
+
+    /**
+     * Hace invisible la tapa.
+     */
+    public void makeInvisible() {
+        isVisible = false;
+        for (Rectangle r : parts) r.makeInvisible();
     }
-    
-    
+
+    public int getId() { return id; }
+
+    public int getSize() { return size; }
+
+    public int getY() { return yPosition; }
 }
