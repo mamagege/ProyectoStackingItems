@@ -28,6 +28,10 @@ public class Tower {
     private boolean isVisible;
     private int width;
     private int maxHeight;
+    
+    private static final int DefaultWidth = 300;
+    private static final int DefaultMaxHeight = 1000;
+
 
     /**
      * Construye una torre con ancho visual y altura máxima.
@@ -40,8 +44,23 @@ public class Tower {
         drawHeightMarks();
         isVisible = false;
     }
+    
+    /**
+     * Construye una torre con el número de tazas dado.
+     */
+    public Tower(int cups) {
+        this(DefaultWidth, DefaultMaxHeight);
 
-    //Inserción de elementos
+        if (cups <= 0) {
+            return;
+        }
+
+        for (int size = cups; size >= 1; size--) {
+            pushCup(size);
+        }
+    }
+
+    
 
     /**
      * Agrega una tapa a la taza indicada.
