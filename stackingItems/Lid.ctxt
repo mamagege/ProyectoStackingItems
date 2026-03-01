@@ -1,6 +1,6 @@
 #BlueJ class context
 comment0.target=Lid
-comment0.text=\r\n\ Representa\ una\ tapa\ asociable\ a\ una\ taza.\r\n\ @author\ Juan\ Gait\u00E1n\ and\ Oscar\ Lasso\r\n
+comment0.text=\r\n\ Representa\ una\ tapa\ asociable\ a\ una\ taza.\r\n\ @author\ Juan\ Gait\u00E1n\ and\ Oscar\ LasLidso\r\n
 comment1.params=id\ size\ color
 comment1.target=Lid(int,\ int,\ java.lang.String)
 comment1.text=\r\n\ Construye\ una\ tapa\ con\ identificador,\ tama\u00F1o\ y\ color.\r\n
