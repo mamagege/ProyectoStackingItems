@@ -52,6 +52,9 @@ public class Lid {
 
         this.xPosition = targetX;
         this.yPosition = targetY;
+        
+        buildLid();
+        
 
         for (int i = 0; i < parts.size(); i++) {
             Rectangle r = parts.get(i);

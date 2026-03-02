@@ -85,8 +85,14 @@ public class Cup {
 
         for (int i = 0; i < lids.size(); i++) {
             Lid lid = lids.get(i);
-            int lidX = xPosition + BLOCK_SIZE;
-            int lidY = yPosition - BLOCK_SIZE - (i * BLOCK_SIZE);
+            int lidX = xPosition + ((size - lid.getSize()) * BLOCK_SIZE) / 2;
+            int lidY;
+            if (lid.getSize() < size) {
+                int innerFloorY = yPosition + getRealPixelHeight() - (2 * BLOCK_SIZE);
+                lidY = innerFloorY - (i * BLOCK_SIZE);
+            } else {
+                lidY = yPosition - BLOCK_SIZE - (i * BLOCK_SIZE);
+            }
             lid.moveTo(lidX, lidY);
         }
 
@@ -115,6 +121,10 @@ public class Cup {
      * Agrega una tapa a la taza.
      */
     public void addLid(Lid lid) {
+        if (!lids.isEmpty()) {
+            Lid previous = lids.remove(0);
+            previous.makeInvisible();
+        }
         lids.add(lid);
     }
 

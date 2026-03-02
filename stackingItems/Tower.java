@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.List;
 
 /**
  * Representa una torre de tazas y tapas.
@@ -13,15 +13,15 @@ public class Tower {
     //Constantes de posicionamiento
 
     private static final int TOWER_X = 500;
-    private static final int BASE_Y = 600;
+    private static final int BASE_Y = 700;
     private static final int BLOCK_SIZE = 25;
 
     //Estructuras principales
 
-    private ArrayList<Cup> cups;
-    private HashMap<Integer, Lid> lids;
-    private ArrayList<Rectangle> heightMarks;
-
+    private List<Cup> cups;
+    private List<Lid> standaloneLids;
+    private List<Rectangle> heightMarks;
+    
     //Estado de la torre
        
 
@@ -41,6 +41,7 @@ public class Tower {
         this.maxHeight = maxHeight;
         cups = new ArrayList<>();
         heightMarks = new ArrayList<>();
+        standaloneLids = new ArrayList<>();
         drawHeightMarks();
         isVisible = false;
     }
@@ -54,30 +55,38 @@ public class Tower {
         if (cups <= 0) {
             return;
         }
-
-        for (int size = cups; size >= 1; size--) {
-            pushCup(size);
+        int vc = 1;
+        for (int id = cups; vc <= id; vc++) {
+            pushCup(vc);
         }
     }
 
     
-
     /**
      * Agrega una tapa a la taza indicada.
      * Valida altura máxima antes de insertarla.
      */
     public void pushLid(int id) {
-
+        
         Cup cup = getCupById(id);
-        if (cup == null) return;
-
-        int lidSize = cup.getSize() - 2;
-        if (lidSize <= 0) return;
-
+        
+        
+        if (lidExistsInTower(id)) {
+            if (isVisible) {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "La tapa " + id + " ya existe en la torre.");
+            }
+            return;
+        }
+        
+        
+        int lidSize = sizeFromId(id);
         Lid lid = new Lid(id, lidSize, getColorForSize(id));
-
-        int projectedHeight = getCurrentHeight() + BLOCK_SIZE;
-
+        
+        int projectedHeight = (cup != null && cup.hasLids())
+                ? getCurrentHeight()
+                : getCurrentHeight() + BLOCK_SIZE;
+                
         if (projectedHeight > maxHeight) {
             if (isVisible) {
                 javax.swing.JOptionPane.showMessageDialog(null,
@@ -86,24 +95,46 @@ public class Tower {
             return;
         }
 
-        cup.addLid(lid);
+        Cup targetCup = cup;
+        if (targetCup == null && !cups.isEmpty()) {
+            Cup topCup = cups.get(cups.size() - 1);
+            if (!topCup.hasLids() && lid.getSize() < topCup.getSize()) {
+                targetCup = topCup;
+            }
+        }
 
-        int index = cup.getLids().size() - 1;
-        int lidX = cup.getX() + BLOCK_SIZE;
-        int lidY = cup.getY() - BLOCK_SIZE - (index * BLOCK_SIZE);
-
+        if (targetCup != null) {
+            targetCup.addLid(lid);
+            int lidX = targetCup.getX() + ((targetCup.getSize() - lid.getSize()) * BLOCK_SIZE) / 2;
+            int lidY = (lid.getSize() < targetCup.getSize())
+                    ? targetCup.getY() + targetCup.getRealPixelHeight() - (2 * BLOCK_SIZE)
+                    : targetCup.getY() - BLOCK_SIZE;
+            lid.moveTo(lidX, lidY);
+            if (isVisible) lid.makeVisible();
+            return;
+        }
+        
+        int lidX = TOWER_X - ((lid.getSize() * BLOCK_SIZE) / 2);
+        int lidY = getTopY() - BLOCK_SIZE;
         lid.moveTo(lidX, lidY);
-
+        
+        standaloneLids.add(lid);
+        
         if (isVisible) lid.makeVisible();
     }
 
     /**
      * Agrega una taza respetando reglas de anidamiento y altura máxima.
      */
-    public void pushCup(int size) {
+    public void pushCup(int id) {
+        if (id <= 0) {
+            javax.swing.JOptionPane.showMessageDialog(null,
+                "El identificador de la taza debe ser mayor que 0.");
+            return;
+        }
 
-        int id = size;
-
+        int size = sizeFromId(id);
+  
         for (Cup c : cups) {
             if (c.getId() == id) {
                 if (isVisible) {
@@ -114,7 +145,7 @@ public class Tower {
             }
         }
 
-        String color = getColorForSize(size);
+        String color = getColorForSize(id);
         Cup newCup = new Cup(id, size, color);
 
         int widthPx = newCup.getPixelWidth();
@@ -122,22 +153,34 @@ public class Tower {
         int targetY;
 
         Cup topCup = cups.isEmpty() ? null : cups.get(cups.size() - 1);
+        
+        int topY = getTopY();
+        
 
         if (topCup == null) {
-            targetY = BASE_Y - newCup.getRealPixelHeight();
+             if (topY < BASE_Y) {
+                targetY = topY - newCup.getRealPixelHeight();
+            } else {
+                targetY = BASE_Y - newCup.getRealPixelHeight();
+            }
+            
         } else {
 
             boolean topHasLid = topCup.hasLids();
             boolean fitsInside = newCup.getSize() < topCup.getSize();
+            boolean canNestWithCurrentTop = !topHasLid
+                    || canNestAboveInnerLid(topCup);
+                if (!standaloneLids.isEmpty()) {
+                    targetY = topY - newCup.getRealPixelHeight();
+    
+                } else if (fitsInside && canNestWithCurrentTop) {
+                    targetY = getNestedTargetY(topCup, newCup);
+                    
+                } else {
 
-            if (!topHasLid && fitsInside) {
-                int floorY = topCup.getY() + topCup.getRealPixelHeight();
-                int insideFloor = floorY - BLOCK_SIZE;
-                targetY = insideFloor - newCup.getRealPixelHeight();
-            } else {
-                int topY = getTopY();
-                targetY = topY - newCup.getRealPixelHeight();
+                    targetY = topY - newCup.getRealPixelHeight();
             }
+            
         }
 
         int projectedHeight = BASE_Y - targetY;
@@ -151,7 +194,7 @@ public class Tower {
         }
 
         newCup.moveTo(targetX, targetY);
-
+        
         if (isVisible) newCup.makeVisible();
 
         cups.add(newCup);
@@ -199,26 +242,35 @@ public class Tower {
      */
     public void removeLid(int id) {
 
-        Cup cup = getCupById(id);
+    Cup cup = getCupById(id);
 
-        if (cup == null) {
-            if (isVisible) {
-                javax.swing.JOptionPane.showMessageDialog(null,
-                        "No existe la taza " + id);
-            }
-            return;
-        }
-
-        if (!cup.hasLids()) {
-            if (isVisible) {
-                javax.swing.JOptionPane.showMessageDialog(null,
-                        "La taza " + id + " no tiene tapa.");
+    if (cup != null) {
+            if (!cup.hasLids()) {
+                if (isVisible) {
+                    javax.swing.JOptionPane.showMessageDialog(null,
+                    "La taza " + id + " no tiene tapa.");
             }
             return;
         }
 
         cup.removeTopLid();
-        rebuildTower();
+        rebuildTower();     
+        return;
+    }
+    Lid removed = removeStandaloneLidById(id);
+    if (removed == null) {
+        if (isVisible) {
+            javax.swing.JOptionPane.showMessageDialog(null,
+                    "No existe la tapa " + id);
+        }
+        return;
+    }
+
+
+    removed.makeInvisible();
+    rebuildTower();
+    
+    
     }
 
     /**
@@ -254,6 +306,8 @@ public class Tower {
         if (cups.isEmpty()) return;
 
         ArrayList<Cup> original = new ArrayList<>(cups);
+        ArrayList<Lid> originalStandalone = new ArrayList<>(standaloneLids);
+        
         Collections.reverse(cups);
 
         if (!fitsWithinHeight()) {
@@ -267,13 +321,92 @@ public class Tower {
         clearTowerVisual();
 
         for (Cup c : original) {
-            pushCup(c.getSize());
+            pushCup(c.getId());
             for (Lid lid : c.getLids()) {
                 pushLid(c.getId());
             }
         }
+        
+        for (Lid lid : originalStandalone) {
+            pushLid(lid.getId());
+        }
     }
 
+    public void swap (String[] o1, String[] o2){
+         if (!isValidObjectRef(o1) || !isValidObjectRef(o2)) {
+            if (isVisible) {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "Cada objeto debe tener formato {\"tipo\", \"id\"}.");
+            }
+            return;
+        }
+
+        String type1 = o1[0].trim().toLowerCase();
+        String type2 = o2[0].trim().toLowerCase();
+
+        int id1;
+        int id2;
+
+        try {
+            id1 = Integer.parseInt(o1[1].trim());
+            id2 = Integer.parseInt(o2[1].trim());
+        } catch (NumberFormatException e) {
+            if (isVisible) {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "Los identificadores deben ser numéricos.");
+            }
+            return;
+        }
+
+        if (type1.equals("cup") && type2.equals("cup")) {
+            int cupIndex1 = findCupIndexById(id1);
+            int cupIndex2 = findCupIndexById(id2);
+
+            if (cupIndex1 == -1 || cupIndex2 == -1) {
+                if (isVisible) {
+                    javax.swing.JOptionPane.showMessageDialog(null,
+                            "No se encontraron ambas tazas para intercambiar.");
+                }
+                return;
+            }
+
+            Collections.swap(cups, cupIndex1, cupIndex2);
+            rebuildTower();
+            return;
+        }
+
+        if (type1.equals("lid") && type2.equals("lid")) {
+            int[] lidRef1 = findLidRefById(id1);
+            int[] lidRef2 = findLidRefById(id2);
+
+            if (lidRef1 == null || lidRef2 == null) {
+                if (isVisible) {
+                    javax.swing.JOptionPane.showMessageDialog(null,
+                            "No se encontraron ambas tapas para intercambiar.");
+                }
+                return;
+            }
+
+            Cup cup1 = cups.get(lidRef1[0]);
+            Cup cup2 = cups.get(lidRef2[0]);
+
+            Lid lid1 = cup1.getLids().get(lidRef1[1]);
+            Lid lid2 = cup2.getLids().get(lidRef2[1]);
+
+            cup1.getLids().set(lidRef1[1], lid2);
+            cup2.getLids().set(lidRef2[1], lid1);
+
+            rebuildTower();
+            return;
+        }
+
+        if (isVisible) {
+            javax.swing.JOptionPane.showMessageDialog(null,
+                    "Solo se pueden intercambiar objetos del mismo tipo (cup-cup o lid-lid).");
+        }    
+    
+    }
+    
     /**
      * Ordena la torre de mayor a menor tamaño.
      */
@@ -282,6 +415,8 @@ public class Tower {
         if (cups.isEmpty()) return;
 
         ArrayList<Cup> original = new ArrayList<>(cups);
+        ArrayList<Lid> originalStandalone = new ArrayList<>(standaloneLids);
+        
 
         Collections.sort(original,
                 (c1, c2) -> Integer.compare(c2.getSize(), c1.getSize()));
@@ -297,13 +432,109 @@ public class Tower {
         clearTowerVisual();
 
         for (Cup c : original) {
-            pushCup(c.getSize());
+            pushCup(c.getId());
             for (Lid lid : c.getLids()) {
                 pushLid(c.getId());
             }
         }
+        
+        for (Lid lid : originalStandalone) {
+            pushLid(lid.getId());
+        }
+        
     }
 
+    /**
+     * Cubre las tazas que no tienen tapa usando las tapas ya existentes en la torre.
+     */
+    public void cover() {
+        boolean movedAnyLid = false;
+
+        for (Cup cup : cups) {
+            if (cup.hasLids()) {
+                continue;
+            }
+
+            Lid matchingLid = detachLidById(cup.getId());
+            if (matchingLid == null) {
+                continue;
+            }
+
+            cup.addLid(matchingLid);
+            movedAnyLid = true;
+        }
+
+        if (movedAnyLid) {
+            rebuildTower();
+        }
+    }
+    
+    /**
+     * Retorna un intercambio que reduzca la altura de la torre.
+     *
+     * El resultado tiene el formato:
+     * {{"cup|lid", "id"}, {"cup|lid", "id"}}
+     *
+     * Si no existe un intercambio que reduzca la altura al menos en 1,
+     * retorna una matriz vacía.
+     */
+    public String[][] swapToReduce() {
+        int currentHeight = height();
+        int bestHeight = currentHeight;
+        String[][] bestSwap = new String[0][0];
+
+        for (int i = 0; i < cups.size(); i++) {
+            for (int j = i + 1; j < cups.size(); j++) {
+                Collections.swap(cups, i, j);
+                rebuildTower();
+
+                int candidateHeight = height();
+                if (candidateHeight < bestHeight) {
+                    bestHeight = candidateHeight;
+                    bestSwap = new String[][]{
+                        {"cup", String.valueOf(cups.get(i).getId())},
+                        {"cup", String.valueOf(cups.get(j).getId())}
+                    };
+                }
+
+                Collections.swap(cups, i, j);
+                rebuildTower();
+            }
+        }
+
+        ArrayList<LidLocation> lidLocations = getAllLidLocations();
+        for (int i = 0; i < lidLocations.size(); i++) {
+            for (int j = i + 1; j < lidLocations.size(); j++) {
+                LidLocation first = lidLocations.get(i);
+                LidLocation second = lidLocations.get(j);
+
+                Lid firstLid = first.getLid(this);
+                Lid secondLid = second.getLid(this);
+                first.setLid(this, secondLid);
+                second.setLid(this, firstLid);
+
+                rebuildTower();
+
+                int candidateHeight = height();
+                if (candidateHeight < bestHeight) {
+                    bestHeight = candidateHeight;
+                    bestSwap = new String[][]{
+                        {"lid", String.valueOf(firstLid.getId())},
+                        {"lid", String.valueOf(secondLid.getId())}
+                    };
+                }
+
+                firstLid = first.getLid(this);
+                secondLid = second.getLid(this);
+                first.setLid(this, secondLid);
+                second.setLid(this, firstLid);
+                rebuildTower();
+            }
+        }
+
+        return (currentHeight - bestHeight) >= 1 ? bestSwap : new String[0][0];
+    }
+    
     // Consultas
 
     /**
@@ -311,8 +542,7 @@ public class Tower {
      */
     public int height() {
 
-        if (cups.isEmpty()) return 0;
-
+        if (cups.isEmpty() && standaloneLids.isEmpty()) return 0;
         int topY = BASE_Y;
 
         for (Cup c : cups) {
@@ -321,6 +551,11 @@ public class Tower {
                 if (lid.getY() < topY) topY = lid.getY();
             }
         }
+        
+        for (Lid lid : standaloneLids) {
+            if (lid.getY() < topY) topY = lid.getY();
+        }
+        
 
         return (BASE_Y - topY) / BLOCK_SIZE;
     }
@@ -330,7 +565,7 @@ public class Tower {
      */
     public int getCurrentHeight() {
 
-        if (cups.isEmpty()) return 0;
+        if (cups.isEmpty() && standaloneLids.isEmpty()) return 0;
 
         int topY = BASE_Y;
 
@@ -340,7 +575,12 @@ public class Tower {
                 if (lid.getY() < topY) topY = lid.getY();
             }
         }
+        
+         for (Lid lid : standaloneLids) {
+            if (lid.getY() < topY) topY = lid.getY();
+        }
 
+    
         return BASE_Y - topY;
     }
 
@@ -376,6 +616,11 @@ public class Tower {
                 items.add(new String[]{"Lid", String.valueOf(lid.getId())});
             }
         }
+        
+        for (Lid lid : standaloneLids) {
+            items.add(new String[]{"Lid", String.valueOf(lid.getId())});
+        }
+        
 
         String[][] result = new String[items.size()][2];
         for (int i = 0; i < items.size(); i++) {
@@ -401,6 +646,11 @@ public class Tower {
             }
             if (c.getLids() == null) return false;
         }
+        
+        for (Lid lid : standaloneLids) {
+            if (lid.getY() < minY) return false;
+        }
+        
 
         return true;
     }
@@ -414,6 +664,7 @@ public class Tower {
         isVisible = true;
         drawHeightMarks();
         for (Cup c : cups) c.makeVisible();
+        for (Lid lid : standaloneLids) lid.makeVisible();
     }
 
     /**
@@ -422,6 +673,7 @@ public class Tower {
     public void makeInvisible() {
         isVisible = false;
         for (Cup c : cups) c.makeInvisible();
+        for (Lid lid : standaloneLids) lid.makeInvisible();
     }
 
     /**
@@ -435,9 +687,14 @@ public class Tower {
             }
             c.makeInvisible();
         }
-
+        
+        for (Lid lid : standaloneLids) {
+            lid.makeInvisible();
+        }
+        
         cups.clear();
-
+        standaloneLids.clear();
+         
         if (heightMarks != null) {
             for (Rectangle r : heightMarks) {
                 r.makeInvisible();
@@ -456,16 +713,57 @@ public class Tower {
     private void rebuildTower() {
 
         for (Cup c : cups) c.makeInvisible();
+        for (Lid lid : standaloneLids) lid.makeInvisible();
+        
 
-        int currentTop = BASE_Y;
+        int currentTopY = BASE_Y;
+        Cup topCup = null;
 
         for (Cup c : cups) {
             int targetX = TOWER_X - (c.getPixelWidth() / 2);
-            int targetY = currentTop - c.getRealPixelHeight();
+            int targetY;
+
+            if (topCup == null) {
+                targetY = BASE_Y - c.getRealPixelHeight();
+            } else {
+                boolean topHasLid = topCup.hasLids();
+                boolean fitsInside = c.getSize() < topCup.getSize();
+                boolean canNestWithCurrentTop = !topHasLid
+                        || canNestAboveInnerLid(topCup);
+                        
+                if (!standaloneLids.isEmpty()) {
+                    targetY = currentTopY - c.getRealPixelHeight();
+                 } else if (fitsInside && canNestWithCurrentTop) {
+                    targetY = getNestedTargetY(topCup, c);
+                } else {
+                    targetY = currentTopY - c.getRealPixelHeight();
+                }
+            }
+            
             c.moveTo(targetX, targetY);
-            currentTop = targetY;
+            
             if (isVisible) c.makeVisible();
+            
+            if (c.getY() < currentTopY) {
+                currentTopY = c.getY();
+            }
+            for (Lid lid : c.getLids()) {
+                if (lid.getY() < currentTopY) {
+                    currentTopY = lid.getY();
+                }
+            }
+
+            topCup = c;
         }
+        for (Lid lid : standaloneLids) {
+            int lidX = TOWER_X - ((lid.getSize() * BLOCK_SIZE) / 2);
+            int lidY = currentTopY - BLOCK_SIZE;
+            lid.moveTo(lidX, lidY);
+            if (isVisible) lid.makeVisible();
+            currentTopY = lidY;
+        }
+        
+        
     }
 
     /**
@@ -482,7 +780,8 @@ public class Tower {
                 currentTop -= BLOCK_SIZE;
             }
         }
-
+        currentTop -= standaloneLids.size() * BLOCK_SIZE;
+        
         int totalHeight = BASE_Y - currentTop;
         return totalHeight <= maxHeight;
     }
@@ -498,8 +797,13 @@ public class Tower {
             }
             c.makeInvisible();
         }
-
+        
+        for (Lid lid : standaloneLids) {
+            lid.makeInvisible();
+        }
+        
         cups.clear();
+        standaloneLids.clear();
     }
 
     /**
@@ -542,10 +846,46 @@ public class Tower {
                 if (lid.getY() < top) top = lid.getY();
             }
         }
-
+        
+        for (Lid lid : standaloneLids) {
+            if (lid.getY() < top) top = lid.getY();
+        }
+        
         return top;
     }
+    
+    private Lid removeStandaloneLidById(int id) {
+        for (int i = 0; i < standaloneLids.size(); i++) {
+            Lid lid = standaloneLids.get(i);
+            if (lid.getId() == id) {
+                standaloneLids.remove(i);
+                return lid;
+            }
+        }
+        return null;
+    }
+    
+     private Lid detachLidById(int id) {
+        Lid detached = removeStandaloneLidById(id);
+        if (detached != null) {
+            return detached;
+        }
 
+        for (Cup sourceCup : cups) {
+            ArrayList<Lid> lids = sourceCup.getLids();
+            for (int lidIndex = 0; lidIndex < lids.size(); lidIndex++) {
+                Lid lid = lids.get(lidIndex);
+                if (lid.getId() == id) {
+                    lids.remove(lidIndex);
+                    return lid;
+                }
+            }
+        }
+
+        return null;
+    }
+    
+    
     /**
      * Retorna una taza por identificador.
      */
@@ -556,6 +896,39 @@ public class Tower {
         return null;
     }
 
+     private int findCupIndexById(int id) {
+        for (int i = 0; i < cups.size(); i++) {
+            if (cups.get(i).getId() == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int[] findLidRefById(int id) {
+        for (int cupIndex = 0; cupIndex < cups.size(); cupIndex++) {
+            ArrayList<Lid> cupLids = cups.get(cupIndex).getLids();
+            for (int lidIndex = 0; lidIndex < cupLids.size(); lidIndex++) {
+                if (cupLids.get(lidIndex).getId() == id) {
+                    return new int[]{cupIndex, lidIndex};
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isValidObjectRef(String[] objectRef) {
+        return objectRef != null
+                && objectRef.length == 2
+                && objectRef[0] != null
+                && objectRef[1] != null;
+    }
+
+    
+    private int sizeFromId(int id) {
+        return (2 * id) - 1;
+    }
+    
     /**
      * Retorna un color asociado al tamaño.
      */
@@ -563,4 +936,88 @@ public class Tower {
         String[] colors = {"red", "blue", "green", "yellow", "magenta", "black"};
         return colors[s % colors.length];
     }
+    
+    private boolean lidExistsInTower(int id) {
+        for (Cup c : cups) {
+            for (Lid lid : c.getLids()) {
+                if (lid.getId() == id) {
+                    return true;
+                }
+            }
+        }
+
+        for (Lid lid : standaloneLids) {
+            if (lid.getId() == id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    private ArrayList<LidLocation> getAllLidLocations() {
+        ArrayList<LidLocation> locations = new ArrayList<>();
+
+        for (int cupIndex = 0; cupIndex < cups.size(); cupIndex++) {
+            ArrayList<Lid> cupLids = cups.get(cupIndex).getLids();
+            for (int lidIndex = 0; lidIndex < cupLids.size(); lidIndex++) {
+                locations.add(new LidLocation(cupIndex, lidIndex, -1));
+            }
+        }
+
+        for (int standaloneIndex = 0; standaloneIndex < standaloneLids.size(); standaloneIndex++) {
+            locations.add(new LidLocation(-1, -1, standaloneIndex));
+        }
+
+        return locations;
+    }
+
+    private static class LidLocation {
+        private final int cupIndex;
+        private final int lidIndex;
+        private final int standaloneIndex;
+
+        LidLocation(int cupIndex, int lidIndex, int standaloneIndex) {
+            this.cupIndex = cupIndex;
+            this.lidIndex = lidIndex;
+            this.standaloneIndex = standaloneIndex;
+        }
+
+        Lid getLid(Tower tower) {
+            if (standaloneIndex >= 0) {
+                return tower.standaloneLids.get(standaloneIndex);
+            }
+            return tower.cups.get(cupIndex).getLids().get(lidIndex);
+        }
+
+        void setLid(Tower tower, Lid lid) {
+            if (standaloneIndex >= 0) {
+                tower.standaloneLids.set(standaloneIndex, lid);
+            } else {
+                tower.cups.get(cupIndex).getLids().set(lidIndex, lid);
+            }
+        }
+    }
+    
+    
+     private int getNestedTargetY(Cup containerCup, Cup nestedCup) {
+        int supportY = containerCup.getY() + containerCup.getRealPixelHeight() - BLOCK_SIZE;
+
+        if (canNestAboveInnerLid(containerCup)) {
+            Lid innerLid = containerCup.getLids().get(containerCup.getLids().size() - 1);
+            supportY = innerLid.getY();
+        }
+
+        return supportY - nestedCup.getRealPixelHeight();
+    }
+
+    private boolean canNestAboveInnerLid(Cup cup) {
+        if (!cup.hasLids()) {
+            return false;
+        }
+
+        Lid topLid = cup.getLids().get(cup.getLids().size() - 1);
+        return topLid.getSize() < cup.getSize();
+    }
+    
 }
