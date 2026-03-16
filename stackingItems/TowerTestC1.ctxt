@@ -1,0 +1,22 @@
+#BlueJ class context
+comment0.target=TowerTestC1
+comment0.text=\r\n\ Clase\ de\ pruebas\ de\ unidad\ C1\ para\ m\u00E9todos\ de\ consulta,\ orden\ y\ estado\ en\ Tower.\r\n\r\n\ Patr\u00F3n\:\ AAA\ +\ nombres\ should/shouldnt.\r\n
+comment1.params=
+comment1.target=void\ ShouldOrderTowerFromBiggerToSmallerCupIds()
+comment2.params=
+comment2.target=void\ ShouldOrderTowerKeepingLidsWithTheirCup()
+comment3.params=
+comment3.target=void\ ShouldntChangeEmptyTowerWhenOrderTower()
+comment4.params=
+comment4.target=void\ ShouldReverseTowerOrderForCupsAndStandaloneLids()
+comment5.params=
+comment5.target=void\ ShouldntBreakTowerWhenReverseEmptyTower()
+comment6.params=
+comment6.target=void\ ShouldReturnExpectedHeightWithNestedAndStackedElements()
+comment7.params=
+comment7.target=void\ ShouldReturnLiddedCupsOnlyForCupsWithLids()
+comment8.params=
+comment8.target=void\ ShouldReturnStackingItemsInInsertionStructureOrder()
+comment9.params=
+comment9.target=void\ ShouldExitAndClearAllTowerData()
+numComments=10

@@ -1,0 +1,26 @@
+#BlueJ class context
+comment0.target=TowerTestC2
+comment0.text=\r\n\ Clase\ de\ pruebas\ de\ unidad\ C2\ para\ m\u00E9todos\ de\ construcci\u00F3n\ e\ intercambio\ en\ Tower.\r\n\r\n\ Alcance\ ciclo\ 2\:\r\n\ -\ Constructor\ Tower(cups)\r\n\ -\ swap()\r\n\ -\ cover()\r\n\ -\ swapToReduce()\r\n\r\n\ Patr\u00F3n\ aplicado\:\ AAA\ +\ nomenclatura\ Should/Shouldnt.\r\n
+comment1.params=
+comment1.target=void\ ShouldBuildTower()
+comment10.params=
+comment10.target=void\ ShouldntSuggestSwap()
+comment11.params=items\ type\ id
+comment11.target=boolean\ containsItem(java.lang.String[][],\ java.lang.String,\ java.lang.String)
+comment2.params=
+comment2.target=void\ ShouldntBuildinNegativeOrZeroConstructor()
+comment3.params=
+comment3.target=void\ ShouldSwapTwoCups()
+comment4.params=
+comment4.target=void\ ShouldSwapLids()
+comment5.params=
+comment5.target=void\ ShouldntSwapDiferentsObjects()
+comment6.params=
+comment6.target=void\ ShouldntSwapAnyErrorStructure()
+comment7.params=
+comment7.target=void\ ShouldCover()
+comment8.params=
+comment8.target=void\ ShouldntChangeTowerWhenCover()
+comment9.params=
+comment9.target=void\ ShouldSuggestSwap()
+numComments=12

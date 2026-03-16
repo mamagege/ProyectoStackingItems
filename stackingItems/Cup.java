@@ -34,6 +34,17 @@ public class Cup {
         this.yPosition = 0;
         buildCup();
     }
+    
+    public Cup(int id, String color) {
+        this.id = id;
+        this.color = color;
+        this.parts = new ArrayList<>();
+        this.lids = new ArrayList<>();
+        this.isVisible = false;
+        this.xPosition = 0;
+        this.yPosition = 0;
+        buildCup();
+    }
 
     /**
      * Construye la geometría de la taza en la posición actual.
@@ -83,15 +94,19 @@ public class Cup {
 
         buildCup();
 
-        for (int i = 0; i < lids.size(); i++) {
-            Lid lid = lids.get(i);
+        int nestedLids = 0;
+        int coverLids = 0;
+
+        for (Lid lid : lids) {
             int lidX = xPosition + ((size - lid.getSize()) * BLOCK_SIZE) / 2;
             int lidY;
             if (lid.getSize() < size) {
                 int innerFloorY = yPosition + getRealPixelHeight() - (2 * BLOCK_SIZE);
-                lidY = innerFloorY - (i * BLOCK_SIZE);
+                lidY = innerFloorY - (nestedLids * BLOCK_SIZE);
+                nestedLids++;
             } else {
-                lidY = yPosition - BLOCK_SIZE - (i * BLOCK_SIZE);
+                lidY = yPosition - BLOCK_SIZE - (coverLids * BLOCK_SIZE);
+                coverLids++;
             }
             lid.moveTo(lidX, lidY);
         }
@@ -121,10 +136,7 @@ public class Cup {
      * Agrega una tapa a la taza.
      */
     public void addLid(Lid lid) {
-        if (!lids.isEmpty()) {
-            Lid previous = lids.remove(0);
-            previous.makeInvisible();
-        }
+
         lids.add(lid);
     }
 
