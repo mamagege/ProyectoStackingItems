@@ -2,7 +2,7 @@
 
 
 
-Mini-ciclo 1: Diseño estructural
+Mini-ciclo 1: Diseño estructurales
 
 Se definieron las clases principales (Tower, Cup, Lid), sus atributos y responsabilidades. Se justificó porque era necesario asegurar una correcta separación de responsabilidades antes de implementar lógica compleja.
 
